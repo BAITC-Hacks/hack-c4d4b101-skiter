@@ -1,0 +1,191 @@
+:root {
+  color: #1c2430;
+  background: #f3efe6;
+  font-family: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  line-height: 1.45;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+button, select { font: inherit; }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 28px 20px 48px; }
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  margin-bottom: 22px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #5d6b66;
+}
+
+h1 { margin: 0; font-size: 40px; font-weight: 600; }
+
+.lede { max-width: 58ch; margin: 8px 0 0; color: #3d4a45; }
+
+.budget {
+  min-width: 220px;
+  background: #163028;
+  color: #f4f7f2;
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+
+.budget span, .budget small {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.budget strong { display: block; font-size: 36px; line-height: 1; margin: 4px 0 8px; }
+
+.bar { height: 8px; background: #2d4a40; border-radius: 99px; overflow: hidden; }
+
+.bar div { height: 100%; background: #e2b15a; }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.slots, .catalog { display: grid; gap: 10px; }
+
+.slots { margin: 0 0 22px; padding: 0; list-style: none; }
+
+.slot, .card, .panel {
+  background: #fffdf8;
+  border: 1px solid #e3d9c6;
+  border-radius: 12px;
+}
+
+.slot { padding: 12px; }
+
+.slot-head, .row, .panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.slot-head span, .meta, .card small, .panel small, .hint {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #5c675f;
+  font-size: 13px;
+}
+
+.fields { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(168px, 0.9fr); gap: 8px; margin-top: 8px; }
+
+label { display: grid; gap: 4px; font-size: 13px; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+select, .ghost {
+  border: 1px solid #d7ccb8;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+select { width: 100%; }
+
+.ghost { cursor: pointer; }
+
+.city-note { margin: 22px 0 0; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+.catalog { grid-template-columns: 1fr 1fr; }
+
+.card {
+  text-align: left;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.card:disabled { cursor: not-allowed; opacity: 0.55; }
+
+.card.on { outline: 2px solid #0c6b52; }
+
+.card strong { display: block; margin: 6px 0 2px; }
+
+.tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.tag[data-dir="transport"] { background: #d9e4f5; }
+.tag[data-dir="ecology"] { background: #d7efe4; }
+.tag[data-dir="social"] { background: #f8e3c8; }
+.tag[data-dir="safety"] { background: #f3d6d6; }
+.tag[data-dir="services"] { background: #e3dff5; }
+
+.panel { padding: 16px; position: sticky; top: 16px; }
+
+.score { font-size: 56px; margin: 4px 0; line-height: 0.9; }
+
+.delta { color: #0c6b52; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+
+.stats div { background: #f6f1e6; border-radius: 8px; padding: 8px; }
+
+.stats strong { display: block; font-size: 20px; }
+
+.stats span, .crits li, .error, .explain {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+table { width: 100%; border-collapse: collapse; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
+
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid #eee4d4; }
+
+tr.weak { background: #f8efe0; }
+
+.crits { margin: 8px 0 0; padding-left: 18px; }
+
+.error { color: #8d2b2b; }
+
+.primary {
+  width: 100%;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #0c6b52;
+  color: white;
+  cursor: pointer;
+}
+
+.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.explain {
+  white-space: pre-wrap;
+  background: #f6f1e6;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 860px) {
+  .top, .layout, .fields, .catalog { display: grid; grid-template-columns: 1fr; }
+  .panel { position: static; }
+  h1 { font-size: 32px; }
+}
