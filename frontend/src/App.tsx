@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { DistrictDetailsPanel } from "./components/DistrictDetailsPanel";
+import { DistrictMap } from "./components/DistrictMap";
+import { type DistrictId } from "./lib/districtMap";
 
 type Measure = {
   id: string;
@@ -34,6 +37,7 @@ type DistrictRow = {
   name: string;
   d_before: number;
   d_after: number;
+  indicators?: Record<string, { name?: string; before?: number; after?: number }>;
 };
 
 type SimulateResponse = {
@@ -49,8 +53,14 @@ type SimulateResponse = {
   weakest_district: string | null;
   weakest_district_name: string | null;
   districts: Record<string, DistrictRow> | null;
+  measure_contributions?: {
+    measure_id?: string;
+    name?: string;
+    district?: string | null;
+    effects?: { district?: string; indicator?: string; delta?: number }[];
+  }[] | null;
   synergies_applied: { measures: string[]; indicator: string; delta: number; district: string }[] | null;
-  crits: Crit[] | null;
+  crits: (Crit & { district?: string })[] | null;
   violations: { code: string; message: string }[];
 };
 
@@ -66,6 +76,64 @@ function detailOf(data: { detail?: unknown }): string {
   return typeof data.detail === "string" ? data.detail : "Сервис не ответил";
 }
 
+function formatInline(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => (
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : part
+  ));
+}
+
+function Explanation({ text }: { text: string }) {
+  const blocks: JSX.Element[] = [];
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  let index = 0;
+  while (index < lines.length) {
+    const line = lines[index].trim();
+    if (!line) {
+      index += 1;
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
+        index += 1;
+      }
+      blocks.push(<ul key={blocks.length}>{items.map((item, itemIndex) => <li key={itemIndex}>{formatInline(item)}</li>)}</ul>);
+      continue;
+    }
+    if (/^\d+\.\s+/.test(line)) {
+      const items = [];
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
+        index += 1;
+      }
+      blocks.push(<ol key={blocks.length}>{items.map((item, itemIndex) => <li key={itemIndex}>{formatInline(item)}</li>)}</ol>);
+      continue;
+    }
+    if (/^\*\*[^*]+\*\*:?$/.test(line)) {
+      blocks.push(<h3 key={blocks.length}>{line.replace(/\*\*/g, "").replace(/:$/, "")}</h3>);
+      index += 1;
+      continue;
+    }
+    const paragraph = [line];
+    index += 1;
+    while (
+      index < lines.length
+      && lines[index].trim()
+      && !/^[-*]\s+/.test(lines[index].trim())
+      && !/^\d+\.\s+/.test(lines[index].trim())
+      && !/^\*\*[^*]+\*\*:?$/.test(lines[index].trim())
+    ) {
+      paragraph.push(lines[index].trim());
+      index += 1;
+    }
+    blocks.push(<p key={blocks.length}>{formatInline(paragraph.join(" "))}</p>);
+  }
+  return <div className="explain">{blocks}</div>;
+}
+
 export function App() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -75,6 +143,8 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [explaining, setExplaining] = useState(false);
+  const [mapResult, setMapResult] = useState<SimulateResponse | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<DistrictId | null>(null);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -172,6 +242,7 @@ export function App() {
         const data = await response.json() as SimulateResponse & { detail?: unknown };
         if (!response.ok) throw new Error(detailOf(data));
         setResult(data);
+        if (data.valid) setMapResult(data);
         setSimError("");
       })
       .catch((error: unknown) => {
@@ -231,7 +302,7 @@ export function App() {
         <section>
           <div className="row">
             <h2>Пять решений</h2>
-            <button type="button" className="ghost" onClick={() => setSlots(emptySlots())}>Сбросить</button>
+            <button type="button" className="ghost" onClick={() => { setSlots(emptySlots()); setMapResult(null); setSelectedDistrict(null); }}>Сбросить</button>
           </div>
           <ol className="slots">
             {slots.map((slot, index) => {
@@ -340,6 +411,16 @@ export function App() {
               </div>
               <p>Слабый район: <strong>{result.weakest_district_name}</strong></p>
               <p className="hint">Стоимость {result.cost} из {result.budget}. Остаток на счёт не влияет.</p>
+            </>
+          )}
+          <DistrictMap
+            simulationResult={mapResult}
+            selectedDistrict={selectedDistrict}
+            onDistrictSelect={setSelectedDistrict}
+          />
+          <DistrictDetailsPanel districtId={selectedDistrict} simulationResult={mapResult} />
+          {result?.valid && result.score !== null && (
+            <>
               <table>
                 <thead>
                   <tr><th>Район</th><th>D до</th><th>D после</th></tr>
@@ -377,7 +458,7 @@ export function App() {
               <button type="button" className="primary" onClick={explain} disabled={explaining}>
                 {explaining ? "Объясняем…" : "Объяснить"}
               </button>
-              {explanation && <div className="explain">{explanation}</div>}
+              {explanation && <Explanation text={explanation} />}
             </>
           )}
         </aside>

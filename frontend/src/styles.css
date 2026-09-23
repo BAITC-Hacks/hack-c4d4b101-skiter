@@ -176,13 +176,110 @@ tr.weak { background: #f8efe0; }
 
 .primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.district-map-block { margin-top: 16px; }
+
+.district-map {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+}
+
+.district-map__overlay {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.district-polygon {
+  cursor: pointer;
+  stroke: #4B5563;
+  stroke-width: 3;
+  fill-opacity: 1;
+  transition:
+    fill 300ms ease-in-out,
+    fill-opacity 300ms ease-in-out,
+    stroke 200ms ease-in-out;
+}
+
+.district-polygon:hover,
+.district-polygon:focus-visible {
+  fill-opacity: 1;
+  stroke: #111827;
+  stroke-width: 4;
+  outline: none;
+}
+
+.district-polygon--selected {
+  stroke: #111827;
+  stroke-width: 5;
+  fill-opacity: 1;
+}
+
+.district-tooltip {
+  position: absolute;
+  z-index: 3;
+  width: min(220px, 70%);
+  transform: translate(-50%, -110%);
+  pointer-events: none;
+  background: #111827;
+  color: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.district-tooltip p { margin: 4px 0 0; }
+
+.map-legend {
+  margin-top: 10px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.map-legend p { margin: 0 0 6px; }
+
+.map-legend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+
+.map-legend li { display: flex; align-items: center; gap: 8px; }
+
+.map-legend span {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.district-details {
+  margin-top: 12px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.district-details h3 { margin: 0 0 6px; font-size: 18px; }
+
+.district-details h4 { margin: 12px 0 4px; font-size: 14px; }
+
+.district-details ul { margin: 0; padding-left: 18px; }
+
+.district-details li { margin: 3px 0; }
+
 .explain {
-  white-space: pre-wrap;
   background: #f6f1e6;
   border-radius: 8px;
-  padding: 10px;
-  margin-top: 10px;
+  padding: 4px 14px 10px;
+  margin-top: 12px;
 }
+
+.explain h3 {
+  margin: 14px 0 6px;
+  font-size: 15px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.explain p, .explain li { margin: 0 0 8px; }
+
+.explain ul, .explain ol { margin: 0 0 8px; padding-left: 18px; }
 
 @media (max-width: 860px) {
   .top, .layout, .fields, .catalog { display: grid; grid-template-columns: 1fr; }
