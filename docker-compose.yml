@@ -18,7 +18,7 @@ services:
     ports:
       - "8501:8501"
     environment:
-      API_BASE_URL: http://backend:8000
+      VITE_PROXY_TARGET: http://backend:8000
     depends_on:
       - backend
 volumes:

@@ -72,7 +72,8 @@ def state() -> dict:
     data = load()
     return {"rules": data["rules"], "directions": data["directions"],
             "indicators": data["indicators"], "districts": data["districts"],
-            "measures": data["measures"], "events": data["events"]["catalog"],
+            "measures": data["measures"], "incompatibilities": data["incompatibilities"],
+            "events": data["events"]["catalog"],
             "base_score": simulate(data, [], check=False)["score"]}
 
 

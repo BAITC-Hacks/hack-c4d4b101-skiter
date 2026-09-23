@@ -1,6 +1,6 @@
-FROM python:3.11-slim
+FROM node:20-alpine
 WORKDIR /app
-COPY frontend/requirements.txt frontend/requirements.txt
-RUN pip install --no-cache-dir -r frontend/requirements.txt
-COPY frontend/app.py frontend/app.py
-CMD ["streamlit", "run", "frontend/app.py", "--server.address", "0.0.0.0", "--server.port", "8501", "--browser.gatherUsageStats", "false"]
+COPY frontend/package*.json frontend/
+RUN cd frontend && npm ci
+COPY frontend frontend
+CMD ["npm", "run", "dev", "--prefix", "frontend", "--", "--host", "0.0.0.0", "--port", "8501"]
