@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Аким на 5 часов", lifespan=lifespan)
+app = FastAPI(title="Urban AI", lifespan=lifespan)
 
 
 @app.exception_handler(HTTPException)

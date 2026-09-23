@@ -160,7 +160,7 @@ export function App() {
 
   return <div className="page">
     <header className="top compact-top">
-      <div><p className="eyebrow">Симулятор городского управления</p><div className="brand">Аким на 5 часов</div>
+      <div><p className="eyebrow">Симулятор городского управления</p><div className="brand">Urban AI</div>
         {page === "home" && <p className="lede">{city?.rules.decisions_exact ?? 5} решений. Бюджет {budget}. Посмотрите, как ваш план изменит город.</p>}</div>
       <div className="budget"><span>Остаток бюджета</span><strong>{budget - spent}</strong>
         <div className="bar"><div style={{ width: `${Math.min(100, spent / budget * 100)}%` }} /></div>
