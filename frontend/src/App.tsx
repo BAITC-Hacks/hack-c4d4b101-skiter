@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { DistrictDetailsPanel } from "./components/DistrictDetailsPanel";
+import { DistrictMap } from "./components/DistrictMap";
+import { type DistrictId, toMapResult } from "./lib/districtMap";
 
 type Measure = { id: string; name: string; direction: string; type: "city" | "district"; cost: number; lag: number; realized_share: number; effects: Record<string, number>; description: string; risks: string };
 type District = { id: string; name: string; pop_share: number; profile: string; key_issues: string[]; indicators: Record<string, number>; raw_indicators: Record<string, number>; passport: Record<string, number>; context_indicators: Record<string, number> };
@@ -52,6 +55,7 @@ export function App() {
   const [stress, setStress] = useState<Stress | null>(null);
   const [responses, setResponses] = useState<string[]>([]);
   const [board, setBoard] = useState<BoardRow[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<DistrictId | null>(null);
   const [sort, setSort] = useState<"score" | "resilience">("score");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -139,6 +143,7 @@ export function App() {
     finally { setBusy(false); }
   }
   const result = submission ?? preview;
+  const mapResult = useMemo(() => toMapResult(result), [result]);
 
   return <div className="page">
     <header className="top">
@@ -217,6 +222,8 @@ export function App() {
         {!result && <p className="hint">Заполните {city?.rules.decisions_exact ?? 5} слотов — Score появится здесь.</p>}
         {validation?.error && ready && <p className="error">{validation.error}</p>}
         {actionError && <p className="error">{actionError}</p>}
+        <DistrictMap simulationResult={mapResult} selectedDistrict={selectedDistrict} onDistrictSelect={setSelectedDistrict} />
+        <DistrictDetailsPanel districtId={selectedDistrict} simulationResult={mapResult} />
         {result && <>
           <div className="score">{fmt(result.score)}</div>
           <p className="delta">база {fmt(city?.base_score ?? 0)} · дельта {fmt(result.score - (city?.base_score ?? 0))}</p>
