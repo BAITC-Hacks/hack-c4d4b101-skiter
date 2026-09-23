@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.advisor import advise
 from app.ai.explainer import explain
-from app.ai.llm import available
+from app.ai.llm import status
 from app.engine.dataset import dataset_hash, load
 from app.engine.events import stress_test
 from app.engine.simulator import simulate
@@ -63,7 +63,8 @@ async def api_error(_request: Request, error: HTTPException) -> JSONResponse:
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "llm_mode": "live" if available() else "fallback",
+    ai = status()
+    return {"status": "ok", "llm_mode": ai["mode"], "ai": ai,
             "dataset_hash": dataset_hash()}
 
 
@@ -74,6 +75,7 @@ def state() -> dict:
             "indicators": data["indicators"], "districts": data["districts"],
             "measures": data["measures"], "incompatibilities": data["incompatibilities"],
             "events": data["events"]["catalog"],
+            "baseline": simulate(data, [], check=False),
             "base_score": simulate(data, [], check=False)["score"]}
 
 
@@ -104,7 +106,7 @@ def submit(body: SubmitRequest) -> dict:
     save(team_name, [item.model_dump() for item in body.plan], result["score"],
          ranked["percentile"], resilience["average"], strategy)
     return {**result, **ranked, "best_single_swap": swap,
-            "resilience_average": resilience["average"], "team_name": team_name}
+            "resilience_average": resilience["average"], "stress_test": resilience, "team_name": team_name}
 
 
 @app.post("/api/explain")

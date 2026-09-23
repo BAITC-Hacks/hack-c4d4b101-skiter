@@ -8,7 +8,9 @@ import re
 import httpx
 
 from app.ai.facts import build_facts
-from app.ai.llm import available, chat
+from app.ai.llm import available, chat, metadata, add_usage, LLMError
+from app.ai.prompts import EXPLAINER_PROMPT
+from app.engine.events import stress_test
 from app.engine.validator import Plan
 
 PLACEHOLDER = re.compile(r"\{\{([A-Za-z0-9_.]+)\}\}")
@@ -46,51 +48,73 @@ def render_payload(payload: dict, facts: dict[str, str]) -> dict:
 
 
 def fallback(data: dict, plan: Plan, result: dict, facts: dict[str, str]) -> dict:
-    weakest = result["weakest_district"]
-    indicator = next((code for district, code in result["critical"] if district == weakest), None)
     changed_district, changed_code = max(
         ((district, code) for district, values in result["indicators_after"].items() for code in values),
         key=lambda pair: abs(result["indicators_after"][pair[0]][pair[1]] -
                              result["indicators_before"][pair[0]][pair[1]]),
     )
-    district_name = next(d["name"] for d in data["districts"] if d["id"] == changed_district)
-    indicator_name = next(item["name"] for item in data["indicators"] if item["code"] == changed_code)
-    risk = (f"В слабейшем районе остаётся критический показатель {indicator}: "
-            f"{{{{district.{weakest}.{indicator}.raw_after}}}}." if indicator else
-            "Критических показателей после выбранных мер нет.")
+    risks = [f"{{{{district.{d}.name}}}}: {{{{indicator.{code}.name}}}} — "
+             f"{{{{district.{d}.{code}.raw_after}}}}; индекс {{{{district.{d}.{code}.score_after}}}} "
+             "ниже критического порога {{threshold}}." for d, code in result["critical"]]
     payload = {
-        "summary": "Итоговый балл {{score}}, изменение к базе {{score_delta_vs_base}}.",
-        "strengths": ["План укладывается в бюджет: стоимость {{cost}}, резерв {{remaining}}."],
-        "risks": [risk],
-        "consequences": ["Слабейший район — {{weakest_district}}; критических показателей {{critical_count}}.",
-                         f"{district_name}, {indicator_name}: "
+        "summary": "Итоговый балл {{score}}, изменение к базе {{score_delta_vs_base}}. "
+                   "Стоимость пакета {{cost}}, резерв {{remaining}}. Критических показателей: {{critical_count}}.",
+        "strengths": [f"{{{{measure.{m}.name}}}}: реализуется {{{{measure.{m}.realized}}}} эффекта "
+                      f"на горизонте {{{{horizon}}}} кварталов; лаг {{{{measure.{m}.lag}}}} кварталов."
+                      for m, _ in plan],
+        "risks": (risks or ["Критических показателей после выбранных мер нет."]) + [
+            f"{{{{measure.{m}.name}}}}: {{{{measure.{m}.risks}}}}" for m, _ in plan],
+        "consequences": [f"{{{{district.{d['id']}.name}}}}: районный индекс "
+                         f"{{{{district.{d['id']}.score_before}}}} → {{{{district.{d['id']}.score_after}}}}."
+                         for d in data["districts"]] + [
+                         f"Наибольшее изменение индекса: {{{{district.{changed_district}.name}}}}, "
+                         f"{{{{indicator.{changed_code}.name}}}}: "
                          f"{{{{district.{changed_district}.{changed_code}.raw_before}}}} → "
                          f"{{{{district.{changed_district}.{changed_code}.raw_after}}}}."],
-        "main_tradeoff": "Резерв {{remaining}} можно сохранить для реакции на городское событие.",
+        "main_tradeoff": "Слабейший район — {{weakest_district}}. Резерв {{remaining}} доступен для реакции "
+                         "на отдельное событие. Средний стресс-балл {{stress_average}}, худший {{stress_worst}}. "
+                         "Сопоставьте защиту слабого района с резервом на реагирование.",
     }
+    if result["remaining"] == 0:
+        payload["main_tradeoff"] += " Бюджет исчерпан: платные реакции на события недоступны."
+    if "original_score" in facts:
+        payload["summary"] += " Исходный план: {{original_score}}, выигрыш проверенной альтернативы {{improvement}}."
+
     return render_payload(payload, facts)
 
 
-def explain(data: dict, plan: Plan, result: dict, *, context: dict | None = None) -> dict:
-    facts = build_facts(data, plan, result, context=context)
-    if not available():
-        return fallback(data, plan, result, facts)
-    district_profiles = [{"name": d["name"], "profile": d["profile"]} for d in data["districts"]]
-    cards = [{"id": m["id"], "description": m["description"], "risks": m["risks"]}
-             for m in data["measures"] if m["id"] in {p[0] for p in plan}]
-    messages = [{"role": "system", "content": (
-        "Explain in Russian. Numbers come only from the facts table, never calculate or invent them. "
-        "Use {{fact_id}} placeholders for every number except measure and indicator codes. "
-        "Return JSON with summary, strengths[], risks[], consequences[], main_tradeoff.")},
-        {"role": "user", "content": json.dumps({"plan": plan, "facts": facts, "measures": cards,
-                                               "districts": district_profiles}, ensure_ascii=False)}]
-    for _ in range(2):
-        try:
-            message = chat(messages)
-            content = message["content"].strip()
-            if content.startswith("```"):
-                content = content.strip("`").removeprefix("json").strip()
-            return render_payload(json.loads(content), facts)
-        except (ValueError, KeyError, TypeError, RuntimeError, OSError, httpx.HTTPError) as error:
-            messages.append({"role": "user", "content": f"Invalid output: {error}. Retry with fact placeholders only."})
-    return fallback(data, plan, result, facts)
+def explain(data: dict, plan: Plan, result: dict, *, context: dict | None = None,
+            original_result: dict | None = None, original_plan: Plan | None = None,
+            use_ai: bool = True) -> dict:
+    events = stress_test(data, plan)
+    facts = build_facts(data, plan, result, context=context, events=events, original_result=original_result)
+    usage = metadata()
+    usage["message"] = "Расчётный отчёт: API не использован."
+    referenced_measures = {p[0] for p in plan + (original_plan or [])}
+    cards = [m for m in data["measures"] if m["id"] in referenced_measures]
+    for card in cards:
+        facts[f"measure.{card['id']}.name"] = card["name"]
+    messages = [{"role": "system", "content": EXPLAINER_PROMPT},
+                {"role": "user", "content": json.dumps({"plan": plan, "facts": facts,
+                 "measures": cards, "districts": data["districts"], "result": result,
+                 "events": events, "original_result": original_result, "original_plan": original_plan},
+                 ensure_ascii=False)}]
+    if use_ai and available():
+        for _ in range(2):
+            try:
+                message = chat(messages)
+                add_usage(usage, message)
+                content = message["content"].strip()
+                if content.startswith("```"):
+                    content = content.strip("`").removeprefix("json").strip()
+                rendered = render_payload(json.loads(content), facts)
+                usage.update(mode="live", message="Доклад подготовлен ИИ; числа взяты из расчёта.")
+                return {**rendered, "ai": usage}
+            except LLMError as error:
+                add_usage(usage, {"_usage": error.usage})
+                usage.update(error_code=error.code, message=str(error))
+                break
+            except (ValueError, KeyError, TypeError, RuntimeError, OSError, httpx.HTTPError):
+                usage.update(error_code="invalid_output", message="Ответ ИИ не прошёл проверку. Показан расчётный отчёт.")
+                messages.append({"role": "user", "content": "Invalid output. Return all JSON fields; use existing fact placeholders for every number."})
+    return {**fallback(data, plan, result, facts), "ai": usage}
