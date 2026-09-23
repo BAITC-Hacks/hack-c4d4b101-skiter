@@ -1,0 +1,663 @@
+[
+  {
+    "id": "TC01",
+    "title": "Базовый сценарий без мер (только для сравнения, не как ход игрока)",
+    "plan": [],
+    "expected": {
+      "valid": true,
+      "score": 52.56,
+      "cost": 0,
+      "weakest_district": "nura",
+      "n_critical": 2,
+      "district_scores": {
+        "esil": 62.99,
+        "almaty": 57.06,
+        "saryarka": 54.65,
+        "baikonur": 56.63,
+        "nura": 49.18
+      }
+    },
+    "check": false
+  },
+  {
+    "id": "TC02",
+    "title": "Пример из датасета",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M5",
+        "district": "saryarka"
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 56.54,
+      "cost": 95,
+      "weakest_district": "nura",
+      "n_critical": 0,
+      "district_scores": {
+        "esil": 63.43,
+        "almaty": 57.5,
+        "saryarka": 56.3,
+        "baikonur": 57.07,
+        "nura": 52.96
+      }
+    }
+  },
+  {
+    "id": "TC03",
+    "title": "Самый дешёвый набор (61), все районные меры в Нуре",
+    "plan": [
+      {
+        "measure": "M9",
+        "district": "nura"
+      },
+      {
+        "measure": "M11",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M4",
+        "district": "nura"
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 55.67,
+      "cost": 61,
+      "weakest_district": "nura",
+      "n_critical": 1,
+      "district_scores": {
+        "esil": 63.43,
+        "almaty": 57.5,
+        "saryarka": 55.09,
+        "baikonur": 57.07,
+        "nura": 53.68
+      }
+    }
+  },
+  {
+    "id": "TC04",
+    "title": "Лучший набор по полному перебору",
+    "plan": [
+      {
+        "measure": "M2",
+        "district": null
+      },
+      {
+        "measure": "M3",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M9",
+        "district": "nura"
+      },
+      {
+        "measure": "M14",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 57.24,
+      "cost": 98,
+      "weakest_district": "nura",
+      "n_critical": 0,
+      "district_scores": {
+        "esil": 64.11,
+        "almaty": 58.17,
+        "saryarka": 55.77,
+        "baikonur": 57.74,
+        "nura": 54.09
+      }
+    }
+  },
+  {
+    "id": "TC05",
+    "title": "Лучший набор «по одной мере на направление»",
+    "plan": [
+      {
+        "measure": "M3",
+        "district": "nura"
+      },
+      {
+        "measure": "M4",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M14",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 56.34,
+      "cost": 93,
+      "weakest_district": "nura",
+      "n_critical": 1,
+      "district_scores": {
+        "esil": 63.6,
+        "almaty": 57.67,
+        "saryarka": 55.26,
+        "baikonur": 57.24,
+        "nura": 55.07
+      }
+    }
+  },
+  {
+    "id": "TC06",
+    "title": "Ловушка: M11 в Алматы опускает T1 ниже 40",
+    "plan": [
+      {
+        "measure": "M11",
+        "district": "almaty"
+      },
+      {
+        "measure": "M8",
+        "district": "baikonur"
+      },
+      {
+        "measure": "M9",
+        "district": "baikonur"
+      },
+      {
+        "measure": "M10",
+        "district": "baikonur"
+      },
+      {
+        "measure": "M13",
+        "district": "baikonur"
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 52.04,
+      "cost": 80,
+      "weakest_district": "nura",
+      "n_critical": 3,
+      "district_scores": {
+        "esil": 62.99,
+        "almaty": 57.83,
+        "saryarka": 54.65,
+        "baikonur": 60.52,
+        "nura": 49.18
+      }
+    }
+  },
+  {
+    "id": "TC07",
+    "title": "Превышение бюджета (124)",
+    "plan": [
+      {
+        "measure": "M3",
+        "district": "nura"
+      },
+      {
+        "measure": "M13",
+        "district": "almaty"
+      },
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "saryarka"
+      },
+      {
+        "measure": "M2",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "OVER_BUDGET",
+      "error": "Стоимость 124 превышает бюджет 100"
+    }
+  },
+  {
+    "id": "TC08",
+    "title": "Повтор меры",
+    "plan": [
+      {
+        "measure": "M9",
+        "district": "nura"
+      },
+      {
+        "measure": "M9",
+        "district": "esil"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M4",
+        "district": "esil"
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "DUPLICATE",
+      "error": "Мера M9 выбрана повторно"
+    }
+  },
+  {
+    "id": "TC09",
+    "title": "Три меры одного направления",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M9",
+        "district": "esil"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "DIRECTION_LIMIT",
+      "error": "Направление social: 3 мер, максимум 2"
+    }
+  },
+  {
+    "id": "TC10",
+    "title": "M4 и M7 в одном районе",
+    "plan": [
+      {
+        "measure": "M4",
+        "district": "nura"
+      },
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "esil"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "INCOMPATIBLE",
+      "error": "M4 и M7 несовместимы: Конфликт за один участок."
+    }
+  },
+  {
+    "id": "TC11",
+    "title": "M4 и M7 в разных районах — допустимо",
+    "plan": [
+      {
+        "measure": "M4",
+        "district": "saryarka"
+      },
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "esil"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 55.33,
+      "cost": 85,
+      "weakest_district": "nura",
+      "n_critical": 1,
+      "district_scores": {
+        "esil": 64.39,
+        "almaty": 57.5,
+        "saryarka": 56.28,
+        "baikonur": 57.07,
+        "nura": 52.0
+      }
+    }
+  },
+  {
+    "id": "TC12",
+    "title": "M1 и M3 в разных районах — всё равно запрещено",
+    "plan": [
+      {
+        "measure": "M1",
+        "district": "esil"
+      },
+      {
+        "measure": "M3",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "INCOMPATIBLE",
+      "error": "M1 и M3 несовместимы: Либо BRT, либо ЛРТ, в любом районе."
+    }
+  },
+  {
+    "id": "TC13",
+    "title": "Городской мере указан район",
+    "plan": [
+      {
+        "measure": "M12",
+        "district": "esil"
+      },
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M4",
+        "district": "esil"
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "DISTRICT_NOT_ALLOWED",
+      "error": "M12: городская мера, район не указывается"
+    }
+  },
+  {
+    "id": "TC14",
+    "title": "Районной мере не указан район",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": null
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M4",
+        "district": "esil"
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "DISTRICT_REQUIRED",
+      "error": "M7: нужно указать район"
+    }
+  },
+  {
+    "id": "TC15",
+    "title": "Только 4 меры",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "WRONG_COUNT",
+      "error": "Нужно ровно 5 мер, выбрано 4"
+    }
+  },
+  {
+    "id": "TC16",
+    "title": "Пример + событие EV2 (авария на теплосетях), без реакции",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M5",
+        "district": "saryarka"
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 54.02,
+      "cost": 95,
+      "weakest_district": "nura",
+      "n_critical": 2,
+      "district_scores": {
+        "esil": 63.43,
+        "almaty": 55.7,
+        "saryarka": 54.7,
+        "baikonur": 57.07,
+        "nura": 52.96
+      }
+    },
+    "event": "EV2"
+  },
+  {
+    "id": "TC17",
+    "title": "Пример + EV2 + реакция за 10 из резерва 5 — нельзя",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M5",
+        "district": "saryarka"
+      }
+    ],
+    "expected": {
+      "valid": false,
+      "error_code": "RESPONSE_OVER_BUDGET",
+      "error": "Реакция стоит 10, резерв 5"
+    },
+    "event": "EV2",
+    "buy_response": true
+  },
+  {
+    "id": "TC18",
+    "title": "Дешёвый набор + EV2 + реакция из резерва 39",
+    "plan": [
+      {
+        "measure": "M9",
+        "district": "nura"
+      },
+      {
+        "measure": "M11",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M4",
+        "district": "nura"
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 54.4,
+      "cost": 61,
+      "weakest_district": "nura",
+      "n_critical": 2,
+      "district_scores": {
+        "esil": 63.43,
+        "almaty": 56.6,
+        "saryarka": 54.29,
+        "baikonur": 57.07,
+        "nura": 53.68
+      }
+    },
+    "event": "EV2",
+    "buy_response": true
+  },
+  {
+    "id": "TC19",
+    "title": "Пример + событие EV5 (новые ЖК в Нуре)",
+    "plan": [
+      {
+        "measure": "M7",
+        "district": "nura"
+      },
+      {
+        "measure": "M8",
+        "district": "nura"
+      },
+      {
+        "measure": "M10",
+        "district": "nura"
+      },
+      {
+        "measure": "M12",
+        "district": null
+      },
+      {
+        "measure": "M5",
+        "district": "saryarka"
+      }
+    ],
+    "expected": {
+      "valid": true,
+      "score": 55.01,
+      "cost": 95,
+      "weakest_district": "nura",
+      "n_critical": 1,
+      "district_scores": {
+        "esil": 63.43,
+        "almaty": 57.5,
+        "saryarka": 56.3,
+        "baikonur": 57.07,
+        "nura": 51.68
+      }
+    },
+    "event": "EV5"
+  }
+]

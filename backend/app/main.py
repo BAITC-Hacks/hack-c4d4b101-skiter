@@ -1,213 +1,136 @@
+"""HTTP API for the city simulator."""
+
 from __future__ import annotations
 
-import os
-from pathlib import Path
+from contextlib import asynccontextmanager
 
-import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
-from app.engine.dataset import load
-from app.engine.score import score_plan
-from app.engine.validate import total_cost, validate
-from app.schemas import (
-    CritCell,
-    Decision,
-    DistrictResult,
-    EffectLine,
-    IndicatorValue,
-    MeasureContribution,
-    SimulateRequest,
-    SimulateResponse,
-    SynergyApplied,
-    Violation,
-)
-
-SYSTEM_PROMPT = """You are an urban policy explainer. Use ONLY provided numbers.
-Explain in Russian: strengths, risks, weakest district, N_crit,
-tradeoffs, 1-2 concrete swaps that might raise Score.
-Do not invent new effects or costs."""
-
-app = FastAPI(title="Аким на 5 часов")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-_env_loaded = False
+from app.ai.advisor import advise
+from app.ai.explainer import explain
+from app.ai.llm import available
+from app.engine.dataset import dataset_hash, load
+from app.engine.events import stress_test
+from app.engine.simulator import simulate
+from app.engine.space import best_single_swap, context, load_scores
+from app.engine.validator import normalize, validation_result
+from app.storage import leaderboard, save
 
 
-def _load_env() -> None:
-    global _env_loaded
-    if _env_loaded:
-        return
-    _env_loaded = True
-    root = Path(__file__).resolve().parents[2]
-    backend = Path(__file__).resolve().parents[1]
-    for path in (root / ".env", backend / ".env"):
-        if not path.is_file():
-            continue
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+class Decision(BaseModel):
+    measure: str
+    district: str | None = None
 
 
-def _r2(value: float) -> float:
-    return round(value, 2)
+class PlanRequest(BaseModel):
+    plan: list[Decision]
 
 
-def _r4(value: float) -> float:
-    return round(value, 4)
+class SubmitRequest(PlanRequest):
+    team_name: str = Field(min_length=1, max_length=80)
 
 
-def _public(current: dict, baseline: dict) -> SimulateResponse:
-    score = _r2(current["score"])
-    baseline_score = _r2(baseline["score"])
-    districts = {
-        district_id: DistrictResult(
-            name=district["name"],
-            pop=district["pop"],
-            d_before=_r2(district["d_before"]),
-            d_after=_r2(district["d_after"]),
-            indicators={
-                key: IndicatorValue(name=item["name"], before=_r2(item["before"]), after=_r4(item["after"]))
-                for key, item in district["indicators"].items()
-            },
-        )
-        for district_id, district in current["districts"].items()
-    }
-    return SimulateResponse(
-        valid=True,
-        cost=current["cost"],
-        budget=load()["budget"],
-        score=score,
-        baseline_score=baseline_score,
-        delta_vs_baseline=round(score - baseline_score, 2),
-        d_avg=_r2(current["d_avg"]),
-        d_min=_r2(current["d_min"]),
-        n_crit=current["n_crit"],
-        weakest_district=current["weakest_district"],
-        weakest_district_name=current["weakest_district_name"],
-        districts=districts,
-        measure_contributions=[
-            MeasureContribution(
-                measure_id=item["measure_id"],
-                name=item["name"],
-                district=item["district"],
-                cost=item["cost"],
-                lag=item["lag"],
-                realized_fraction=_r4(item["realized_fraction"]),
-                effects=[
-                    EffectLine(
-                        district=effect["district"],
-                        indicator=effect["indicator"],
-                        delta=_r4(effect["delta"]),
-                    )
-                    for effect in item["effects"]
-                ],
-            )
-            for item in current["measure_contributions"]
-        ],
-        synergies_applied=[
-            SynergyApplied(
-                measures=item["measures"],
-                indicator=item["indicator"],
-                delta=item["delta"],
-                district=item["district"],
-            )
-            for item in current["synergies_applied"]
-        ],
-        crits=[CritCell(**{**cell, "value": _r4(cell["value"])}) for cell in current["crits"]],
-        violations=[],
-    )
+class StressRequest(PlanRequest):
+    buy_responses: set[str] = Field(default_factory=set)
 
 
-def _invalid(decisions: list[Decision], violations: list[dict]) -> SimulateResponse:
-    return SimulateResponse(
-        valid=False,
-        cost=total_cost([item.model_dump() for item in decisions]),
-        budget=load()["budget"],
-        violations=[Violation(**item) for item in violations],
-    )
-
-
-@app.get("/catalog")
-def catalog() -> dict:
+def checked_plan(body: PlanRequest) -> tuple[dict, list[tuple[str, str | None]]]:
     data = load()
-    direction_names = {item["id"]: item["name"] for item in data["directions"]}
-    return {
-        "budget": data["budget"],
-        "horizon": data["horizon"],
-        "max_decisions": data["max_decisions"],
-        "max_per_direction": data["max_per_direction"],
-        "indicators": [{"id": item["id"], "name": item["name"]} for item in data["indicators"]],
-        "districts": [{"id": item["id"], "name": item["name"], "pop": item["pop"]} for item in data["districts"]],
-        "measures": [
-            {
-                "id": item["id"],
-                "name": item["name"],
-                "direction": item["direction"],
-                "direction_name": direction_names[item["direction"]],
-                "type": item["type"],
-                "cost": item["cost"],
-                "lag": item["lag"],
-                "effects": item["effects"],
-            }
-            for item in data["measures"]
-        ],
-        "incompatibilities": data["incompatibilities"],
-    }
+    plan = normalize(body.plan)
+    validation = validation_result(data, plan)
+    if not validation["valid"]:
+        raise HTTPException(status_code=422, detail={"error_code": validation["error_code"],
+                                                      "error": validation["error"]})
+    return data, plan
 
 
-@app.post("/simulate", response_model=SimulateResponse)
-def simulate(body: SimulateRequest) -> SimulateResponse:
-    violations = validate(body.decisions)
-    if violations:
-        return _invalid(body.decisions, violations)
-    return _public(score_plan(body.decisions), score_plan([]))
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.scores = load_scores()
+    yield
 
 
-@app.post("/explain")
-def explain(payload: SimulateResponse) -> dict:
-    if not payload.valid or payload.score is None:
-        raise HTTPException(status_code=400, detail="Нужен валидный ответ /simulate")
-    _load_env()
-    key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not key:
-        raise HTTPException(status_code=503, detail="Не задан OPENAI_API_KEY")
-    model = os.environ.get("OPENAI_MODEL", "").strip() or "gpt-4o-mini"
-    base = (os.environ.get("OPENAI_BASE_URL", "").strip() or "https://api.openai.com/v1").rstrip("/")
-    try:
-        response = httpx.post(
-            f"{base}/chat/completions",
-            headers={"Authorization": f"Bearer {key}"},
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": payload.model_dump_json()},
-                ],
-            },
-            timeout=90,
-        )
-    except httpx.HTTPError:
-        raise HTTPException(status_code=502, detail="LLM не ответил")
-    if response.status_code >= 400:
-        detail = "LLM не ответил"
-        try:
-            detail = response.json()["error"]["message"]
-        except (ValueError, KeyError, TypeError):
-            pass
-        raise HTTPException(status_code=502, detail=detail)
-    try:
-        text = response.json()["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, ValueError, TypeError):
-        raise HTTPException(status_code=502, detail="LLM не ответил")
-    if not text:
-        raise HTTPException(status_code=502, detail="LLM не ответил")
-    return {"explanation": text}
+app = FastAPI(title="Аким на 5 часов", lifespan=lifespan)
+
+
+@app.exception_handler(HTTPException)
+async def api_error(_request: Request, error: HTTPException) -> JSONResponse:
+    content = error.detail if isinstance(error.detail, dict) else {"error": str(error.detail)}
+    return JSONResponse(status_code=error.status_code, content=content)
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"status": "ok", "llm_mode": "live" if available() else "fallback",
+            "dataset_hash": dataset_hash()}
+
+
+@app.get("/api/state")
+def state() -> dict:
+    data = load()
+    return {"rules": data["rules"], "directions": data["directions"],
+            "indicators": data["indicators"], "districts": data["districts"],
+            "measures": data["measures"], "events": data["events"]["catalog"],
+            "base_score": simulate(data, [], check=False)["score"]}
+
+
+@app.post("/api/validate")
+def validate_plan(body: PlanRequest) -> dict:
+    return validation_result(load(), normalize(body.plan))
+
+
+@app.post("/api/simulate")
+def simulate_plan(body: PlanRequest) -> dict:
+    data, plan = checked_plan(body)
+    return simulate(data, plan)
+
+
+@app.post("/api/submit")
+def submit(body: SubmitRequest) -> dict:
+    data, plan = checked_plan(body)
+    result = simulate(data, plan)
+    scores = getattr(app.state, "scores", None)
+    ranked = context(result["score"], scores if scores is not None else load_scores(data))
+    swap = best_single_swap(data, plan)
+    resilience = stress_test(data, plan)
+    team_name = body.team_name.strip()
+    if not team_name:
+        raise HTTPException(status_code=422, detail={"error_code": "TEAM_REQUIRED", "error": "Укажите команду"})
+    measure_names = {m["id"]: m["name"] for m in data["measures"]}
+    strategy = ", ".join(measure_names[measure] for measure, _ in plan)
+    save(team_name, [item.model_dump() for item in body.plan], result["score"],
+         ranked["percentile"], resilience["average"], strategy)
+    return {**result, **ranked, "best_single_swap": swap,
+            "resilience_average": resilience["average"], "team_name": team_name}
+
+
+@app.post("/api/explain")
+def explain_plan(body: PlanRequest) -> dict:
+    data, plan = checked_plan(body)
+    result = simulate(data, plan)
+    return explain(data, plan, result)
+
+
+@app.post("/api/advise")
+def advise_plan(body: PlanRequest) -> dict:
+    data, plan = checked_plan(body)
+    return advise(data, plan)
+
+
+@app.post("/api/stress-test")
+def stress_plan(body: StressRequest) -> dict:
+    data, plan = checked_plan(body)
+    result = stress_test(data, plan, body.buy_responses)
+    if not result["valid"]:
+        raise HTTPException(status_code=422, detail={"error_code": result["error_code"],
+                                                      "error": result["error"]})
+    return result
+
+
+@app.get("/api/leaderboard")
+def list_leaderboard(sort: str = "score") -> dict:
+    if sort not in ("score", "resilience"):
+        raise HTTPException(status_code=422, detail={"error_code": "INVALID_SORT", "error": "Неизвестная сортировка"})
+    return {"teams": leaderboard(sort)}
