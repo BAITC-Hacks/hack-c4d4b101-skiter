@@ -35,7 +35,7 @@ cd backend
 npm run dev --prefix frontend -- --host 127.0.0.1 --port 8501
 ```
 
-Откройте `http://localhost:8501`. Если нужен живой LLM, скопируйте `.env.example` в `.env` и задайте `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. `.env` игнорируется Git. Подходит любой совместимый с OpenAI Chat Completions API провайдер.
+Откройте `http://localhost:8501`. Если нужен живой LLM, скопируйте `.env.example` в `.env` и задайте `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. `.env` игнорируется Git. Для GPT-6 используется Responses API с рассуждением и вызовами инструментов; для других моделей остаётся совместимый с OpenAI Chat Completions API маршрут.
 
 ## Основной сценарий
 
